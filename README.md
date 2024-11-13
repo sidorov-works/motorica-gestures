@@ -2,7 +2,7 @@
 
 ### Что сделано
 
-1. **Данные [размечены](https://github.com/sidorov-works/motorica-gestures/tree/main/marked) по границам фактического выполнения жестов.** 
+1. **Данные [размечены](https://github.com/sidorov-works/motorica-gestures/tree/main/fig/marked) по границам фактического выполнения жестов.** 
 
    Границы определялись по локальным максимумам суммарного **второго** градиента показаний датчиков.
 
