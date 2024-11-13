@@ -6,7 +6,7 @@
 
    Границы определялись по локальным максимумам суммарного **второго** градиента показаний датчиков.
 
-   Подготовлены интерактивные [визуализации](https://github.com/sidorov-works/motorica-gestures/tree/main/fig/marked) получившихся разметок.
+   Подготовлены интерактивные [визуализации](https://github.com/sidorov-works/motorica-gestures/tree/main/fig/mark) получившихся разметок.
 
 ### Разные мысли
 
