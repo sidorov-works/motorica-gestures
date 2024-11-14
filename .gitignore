@@ -2,4 +2,4 @@
 /routine
 .ds_store
 /venv
-/__pycache__
+**/__pycache__
