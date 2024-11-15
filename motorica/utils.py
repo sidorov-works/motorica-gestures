@@ -3,17 +3,22 @@ import pandas as pd
 
 from sklearn.preprocessing import MinMaxScaler, RobustScaler, StandardScaler
 
+from typing import List
 
-cols_omg = list(map(str, range(50)))
+N_OMG_SENSORS = 50
+N_GYR_SENSORS = 3
+N_ACC_SENSORS = 3
+cols_omg = list(map(str, range(N_OMG_SENSORS)))
+cols_gyr = [f'GYR{i}' for i in range(N_GYR_SENSORS)]
+cols_acc = [f'ACC{i}' for i in range(N_ACC_SENSORS)]
 
-cols_gyr = [f'GYR{i}' for i in range(3)]
-
-cols_acc = [f'ACC{i}' for i in range(3)]
 
 def read_meta_info(
-    filepath, 
-    cols_with_lists=['mark_sensors', 'hi_val_sensors']
-):
+    filepath: str, 
+    cols_with_lists: List[str] = ['mark_sensors', 'hi_val_sensors']
+) -> pd.DataFrame:
+    '''
+    '''
     meta_info = pd.read_csv(filepath, index_col=0)
     # После чтения файла заново - столбцы со списками, стали обычными строками. 
     # Нужно их преобразовать обратно в списки
@@ -27,7 +32,7 @@ def read_meta_info(
 
 def mark_montage(
     data: pd.DataFrame,
-    omg_cols: list,
+    omg_cols: List[str],
     sync_col: str = 'SYNC',
     label_col: str = 'label',
     pron_col: str = 'Pronation',
@@ -44,7 +49,6 @@ def mark_montage(
     После определения границ производит разметку:
     - метка жеста (0 - 'NOGO', 1 - 'Thumb', 2 - 'Grab', 3 - 'Open', 4 - 'OK', 5 - 'Pistol')
     - метка пронации (0, 1, 2)
-    - признак активной (подвижной) фазы смены жеста (1 - смена, 0 - статическая фаза)
     - порядковый номер жеста в монтаже
 
     ## Параметры
@@ -70,7 +74,7 @@ def mark_montage(
     
     ## Возвращаемый результат
 
-    Кортеж (**data_copy**, **bounds**)
+    Кортеж (**data_copy**, **bounds**, **grad2**)
     
     **data_copy**: *pandas.DataFrame* Размеченная копия данных
 
@@ -116,8 +120,7 @@ def mark_montage(
         res.append(
             (l + max_i,                      # индекс начала жеста (начало смены жеста)
              data.loc[l + max_i, label_col], # метка жеста
-             data.loc[l + max_i, pron_col],  # метка пронации
-             l + min_i)                      # индекс окончания смены жеста (переход на стабильное "плато")
+             data.loc[l + max_i, pron_col])  # метка пронации
         )
 
     # Отдельно сохраним индексы границ жестов (мы их возвращаем в кортеже результата функции)
@@ -129,14 +132,12 @@ def mark_montage(
     data_copy['act_pronation'] = 0
     # а также добавим порядковый номер жеста – sample
     data_copy['sample'] = 0
-    # и признак того, что идет активная смена жеста
-    data_copy['change'] = 0
+
     for i, lr in enumerate(zip(res, res[1:] + [(data_copy.index[-1] + 1, 0, 0)])):
         l, r = lr
         # l[0], r[0] - индексы начала текущего и следующего жестов соответственно
         data_copy.loc[l[0]: r[0], 'act_label'] = l[1]     # l[1] - метка жеста
         data_copy.loc[l[0]: r[0], 'act_pronation'] = l[2] # l[2] - метка пронации
         data_copy.loc[l[0]: r[0], 'sample'] = i + 1       # порядковый номер жеста в монтаже
-        data_copy.loc[l[0]: l[3], 'change'] = 1           # l[3] - индекс окончания смены жеста
 
     return data_copy, bounds, grad2
