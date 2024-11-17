@@ -18,6 +18,8 @@ def read_meta_info(
     cols_with_lists: List[str] = ['mark_sensors', 'hi_val_sensors']
 ) -> pd.DataFrame:
     '''
+    Читает в датафрейм метаданные из файла, путь к которому передан в аргументе **filepath**.
+    Столбцы, названия которых переданы в списке **cols_with_lists**, преобразуются к типу *list*
     '''
     meta_info = pd.read_csv(filepath, index_col=0)
     # После чтения файла заново - столбцы со списками, стали обычными строками. 
