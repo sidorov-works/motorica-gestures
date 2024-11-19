@@ -29,7 +29,7 @@ def read_meta_info(
     for col in cols_with_lists:
         if col in meta_info:
             meta_info[col] = meta_info[col].apply(
-                lambda x: x.strip('[]').replace("'", ' ').replace(' ', '').split(',')
+                lambda x: tuple(x.strip('[]').replace("'", ' ').replace(' ', '').split(','))
             )
     return meta_info
 
@@ -44,9 +44,7 @@ def mark_montage(
     window: int = 0,
     scale: bool = True,
     grad1_spacing: int = 5,
-    grad2_spacing: int = 5,
-    ingnore_n_left: int = 0,
-    ignore_n_right: int = 0
+    grad2_spacing: int = 5
 ) -> np.ndarray[int]:
     '''
     Осуществляет поиск границ фактически выполняемых жестов по локальным максимумам второго градиента измерений *omg*-датчиков.
@@ -72,10 +70,6 @@ def mark_montage(
 
     **grad2_spacing**: *int, default=5*<br>параметр `spacing` для функции `numpy.gradient()` для вычисления **второго** градиента
 
-    **ingnore_n_left**: *int, default=0*<br>не искать границу среди первых *ingnore_n_left* измерений метки синхронизации
-
-    **ingnore_n_right**: *int, default=0*<br>не искать границу среди последних *ingnore_n_right* измерений метки синхронизации
-    
     ### Возвращаемый результат
 
     Кортеж (**data_copy**, **bounds**, **grad2**)
@@ -118,29 +112,18 @@ def mark_montage(
     # что в среднем задержка выполнения жеста NOGO короче, 
     # чем задержки перед другими жестами.
     # Попытаемся учесть это при поиске локальных максимумов.
-
-    '''res = []
-    for l, r in zip(sync_index, sync_index[1:]):
-        try:
-            max_i = np.argmax(grad2[l + ingnore_n_left: r - ignore_n_right]) + ingnore_n_left
-        except ValueError:
-            break
-        res.append(
-            (l + max_i,                      # индекс начала жеста (начало смены жеста)
-             data.loc[l + max_i, label_col], # метка жеста
-             data.loc[l + max_i, pron_col])  # метка пронации
-        )'''
     
     res = []
     for l, r in zip(sync_index, sync_index[1:]):
+        w = min(r - l, 31)
         # Если на данной итерации мы ищем переход на NOGO
         if data.loc[l + 1, label_col] == NOGO:
-            ingnore_n_left = 1
-            ignore_n_right = 10
+            ingnore_n_left = w // 10
+            ignore_n_right = w // 2
         # Если же ищем переход на любой жест кроме NOGO
         else:
-            ingnore_n_left = 10
-            ignore_n_right = 1
+            ingnore_n_left = w // 3
+            ignore_n_right = w // 10
         try:
             max_i = np.argmax(grad2[l + ingnore_n_left: r - ignore_n_right]) + ingnore_n_left
         except ValueError:
