@@ -29,7 +29,7 @@ def read_meta_info(
     for col in cols_with_lists:
         if col in meta_info:
             meta_info[col] = meta_info[col].apply(
-                lambda x: tuple(x.strip('[]').replace("'", ' ').replace(' ', '').split(','))
+                lambda x: x.strip('[]').replace("'", ' ').replace(' ', '').split(',')
             )
     return meta_info
 
@@ -40,7 +40,6 @@ def mark_montage(
     sync_col: str = 'SYNC',
     label_col: str = 'label',
     pron_col: str = 'Pronation',
-    sync_shift = 0,
     window: int = 0,
     scale: bool = True,
     grad1_spacing: int = 5,
@@ -49,9 +48,9 @@ def mark_montage(
     '''
     Осуществляет поиск границ фактически выполняемых жестов по локальным максимумам второго градиента измерений *omg*-датчиков.
     После определения границ производит разметку:
-    - метка жеста (0 - 'NOGO', 1 - 'Thumb', 2 - 'Grab', 3 - 'Open', 4 - 'OK', 5 - 'Pistol')
-    - метка пронации (0, 1, 2)
-    - порядковый номер жеста в монтаже
+    - `act_label` метка жеста (0 - 'NOGO', 1 - 'Thumb', 2 - 'Grab', 3 - 'Open', 4 - 'OK', 5 - 'Pistol')
+    - `act_pronation` метка пронации (0, 1, 2)
+    - `sample` порядковый номер жеста в монтаже
 
     ### Параметры
     **data**: *pd.DataFrame*<br>данные, включающие временные ряды показаний omg-датчиков
@@ -103,29 +102,21 @@ def mark_montage(
     # усиленный возведением в квадрат, но с сохранением знака
     grad2 *= np.abs(grad2)
 
+    # Искать локальный максимум градиентов будем только среди "пиков"
+    peaks = pd.Series(grad2)
+    peaks[grad2 < 0] = 0
+    mask = (peaks.shift(-1) < peaks) & (peaks.shift(1) < peaks)
+    peaks[~mask] = 0
+
     # Искать локальные максимумы второго градиента будем внутри отрезков, 
     # определяемых по признаку синхронизации
     sync_mask = data[sync_col] != data[sync_col].shift(-1)
-    sync_index = data[sync_mask].index + sync_shift
+    sync_index = data[sync_mask].index
 
-    # На визуализациях omg можно заметить, 
-    # что в среднем задержка выполнения жеста NOGO короче, 
-    # чем задержки перед другими жестами.
-    # Попытаемся учесть это при поиске локальных максимумов.
-    
     res = []
     for l, r in zip(sync_index, sync_index[1:]):
-        w = min(r - l, 31)
-        # Если на данной итерации мы ищем переход на NOGO
-        if data.loc[l + 1, label_col] == NOGO:
-            ingnore_n_left = w // 10
-            ignore_n_right = w // 2
-        # Если же ищем переход на любой жест кроме NOGO
-        else:
-            ingnore_n_left = w // 3
-            ignore_n_right = w // 10
         try:
-            max_i = np.argmax(grad2[l + ingnore_n_left: r - ignore_n_right]) + ingnore_n_left
+            max_i = np.argmax(peaks[l: r])
         except ValueError:
             break
         res.append(
