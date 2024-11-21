@@ -143,3 +143,19 @@ def mark_montage(
         data_copy.loc[l[0]: r[0], 'sample'] = i + 1       # порядковый номер жеста в монтаже
 
     return data_copy, bounds, grad2
+
+
+def read_train_and_test(
+        montage: str,
+        features: List[str], 
+        target_col: str = 'act_label',
+        subdir: str = 'marked/'
+) -> List:
+    
+    data_train = pd.read_csv(subdir + montage + ".train", index_col=0)
+    data_test = pd.read_csv(subdir + montage + ".test", index_col=0)
+    X_train = data_train.drop(target_col, axis=1)[features]
+    y_train = data_train[target_col]
+    X_test = data_test.drop(target_col, axis=1)[features]
+    y_test = data_test[target_col]
+    return X_train, X_test, y_train, y_test
