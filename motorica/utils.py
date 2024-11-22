@@ -1,10 +1,17 @@
 import numpy as np
 import pandas as pd
 
-from sklearn.preprocessing import MinMaxScaler, RobustScaler, StandardScaler
+from sklearn.preprocessing import MinMaxScaler
+
+# Визуализация
+import plotly.express as px
+import plotly.io as pio
+pio.templates.default = 'plotly_dark'
 
 from typing import List
 
+
+#---------------------------------------------------------------------------------------------
 N_OMG_SENSORS = 50
 N_GYR_SENSORS = 3
 N_ACC_SENSORS = 3
@@ -12,9 +19,12 @@ cols_omg = list(map(str, range(N_OMG_SENSORS)))
 cols_gyr = [f'GYR{i}' for i in range(N_GYR_SENSORS)]
 cols_acc = [f'ACC{i}' for i in range(N_ACC_SENSORS)]
 
+pilots = [1, 2, 3, 4]
+
 NOGO = 0
 
 
+#---------------------------------------------------------------------------------------------
 def read_meta_info(
     filepath: str, 
     cols_with_lists: List[str] = ['mark_sensors', 'hi_val_sensors']
@@ -34,6 +44,7 @@ def read_meta_info(
     return meta_info
 
 
+#---------------------------------------------------------------------------------------------
 def mark_montage(
     data: pd.DataFrame,
     omg_cols: List[str],
@@ -144,12 +155,14 @@ def mark_montage(
 
     return data_copy, bounds, grad2
 
-
+#---------------------------------------------------------------------------------------------
 def read_train_and_test(
-        montage: str,
-        features: List[str], 
-        target_col: str = 'act_label',
-        subdir: str = 'marked/'
+    montage: str,
+    features: List[str], 
+    target_col: str = 'act_label',
+    subdir: str = 'marked/',
+    rolling_median: int = 0
+
 ) -> List:
     
     data_train = pd.read_csv(subdir + montage + ".train", index_col=0)
@@ -158,4 +171,36 @@ def read_train_and_test(
     y_train = data_train[target_col]
     X_test = data_test.drop(target_col, axis=1)[features]
     y_test = data_test[target_col]
+    if rolling_median:
+        X_train = X_train.rolling(rolling_median).median().fillna(0)
+        X_test = X_test.rolling(rolling_median).median().fillna(0)
     return X_train, X_test, y_train, y_test
+
+
+#---------------------------------------------------------------------------------------------
+def visualize_predictions(
+    X, 
+    y_true, 
+    y_pred=None,
+    y_proba=None,
+    title="",
+    width=1000, height=700  
+):
+    fig_data = X.copy()
+    fig_data['true'] = y_true * 100
+
+    if not y_pred is None:
+        fig_data['pred'] = y_pred * 100
+
+    if not y_proba is None:
+        n_classes = y_proba[0].shape[0]
+        y_proba = pd.DataFrame(
+            y_proba,
+            columns=['proba_' + str(c) for c in range(n_classes)],
+            index=fig_data.index
+        )
+        fig_data = pd.concat([fig_data, y_proba * 100], axis=1)
+
+    fig = px.line(fig_data, width=width, height=height, title=title)
+    fig.update_traces(line=dict(width=1))
+    return fig
